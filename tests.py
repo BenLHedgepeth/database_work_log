@@ -25,10 +25,6 @@ class TestDatabase(unittest.TestCase):
     def test_employee_in_db(self):
         pass
 
-      
-       
-        
-
 
 if __name__ == '__main__':
     unittest.main()

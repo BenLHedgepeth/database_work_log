@@ -23,4 +23,4 @@ def store_date():
 
 def store_duration():
 	time_duration = input("\nProvide how much time was need to complete the task - [hh:mm]:\n>>> ")
-	return formats.timeclock(time_duration)
+	return formats.timeclock(time_duration())
