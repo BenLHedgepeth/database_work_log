@@ -1,14 +1,15 @@
 import datetime
-
-from peewee import * 
+import re
 import readchar
 import sys
+
 import formats  
 import task_functions
-import re
+
+from collections import OrderedDict
+
 
 db = SqliteDatabase('task_logger.db', pragmas={'foreign_keys': 1})
-
 
 class Database:
 
@@ -17,143 +18,168 @@ class Database:
             db.connect(reuse_if_open="True")
         except:
             print("Not Working")
-        else:
-            db.create_tables([Employee, Task])
-            self.main_menu()
+            sys.exit()
+        db.create_tables([Employee, Task])
+        self.main_menu()
             
 
     def main_menu(self):
         '''Display the main menu to the user'''
 
+        menu_options = {
+            'A' : self.add_entry,
+            'D' : self.delete_entry,
+            'S' : self.search_entries,
+            'E' : self.edit_entry
+        }
+
+        menu_ids = menu_options.keys()
+
+        show_menu = ''.join(['[ {key} ] - {option}\n'.format(key=key, option=value.__doc__) # string of `menu_options`
+                     for key, value in menu_options.items()])
+
         while True:
             formats.clear_screen()
+            print(show_menu + "\nSelect from one of the above options")
+            option = readchar.readkey().upper()
 
-            menu_options = {'A' : self.add_entry,
-                            'D' : self.delete_entry,
-                            'E' : self.edit_entry,
-                            'S' : self.search_entries}
-
-            print('''What action would like to perform on the database:''')
-            menu_string = ''.join(['[ {key} ] - {option}\n'.format(key=key, option=value.__doc__) for key, value in menu_options.items()])
-            print(menu_string)
-
-            user_input = readchar.readkey().upper()
-
-            while user_input not in menu_options.keys():
-                print("Please select only based on the options listed above...")
+            while option not in menu_ids:
+                print(f'Cannot perform selection -> ID entered: [{option}]')
                 user_input = readchar.readkey().upper()
 
-            search_complete = menu_options[user_input]()
-            if not search_complete:
+            search_again = menu_options[option]()
+            if not search_again:
                 continue
             sys.exit()
 
     def delete_entry(self):
         '''Remove an employee from the database'''
+        while True:
 
-        emp_data = self.get_employee_data()
-        db_emp = Employee.get_or_none(Employee.ssn==emp_data['ssn'])
+            emp_data = self.get_employee_data()
+            db_emp = Employee.get_or_none(Employee.ssn==emp_data['ssn'])
 
-        if not db_emp:
-            print("No employee in the system.")
-            print("...you will be reverted back to the Main Menu.")
-        else:
-            print("Are you sure you want to delete this record?\n")
-            while True:
-                delete_record = readchar.readkey().upper()
-                if delete_record not in ['Y', 'N']:
-                    print('Invalid input...To delete a record press [Y]es or [N]o.')
-                    continue
-                break
-            if delete_record == 'Y':
-                db_emp.delete_instance()
-                print("Deleted: {'first name'} {'last name'} - SSN# {'ssn'}".format(**emp_data))
+            if not db_emp:
+                print("That employee is not in the system.")
             else:
-                print("Database record not deleted.")
+                while True:
+                    print("\nTo delete this record, enter [Y]es/[N]o...\n")
+                    delete_record = readchar.readkey().upper()
+                    if delete_record not in ['Y', 'N']:
+                        print('Invalid input.')
+                        continue
+                    break
+                if delete_record == 'Y':
+                    db_emp.delete_instance()
+                    print("Deleted: {first_name} {last_name} - SSN# {ssn}".format(**emp_data))
+                else:
+                    print("Database record not deleted.")
+                
+                # while True:
+                #     print("To delete a different employee...press [Y]es/[N]o")
+                #     delete_attempt = readchar.readkey().upper()
+                #     if delete_attempt not in ['Y', 'N']:
+                #         print("Cannot interpret desired action.")
+                #         continue
+                #     break
+
+                # if delete_attempt == 'Y':
+                #     continue
+                # break
+
 
     def edit_entry(self):
-        pass
 
-        # record_fields = list(set([data[0] for data in db.get_columns('Employee') + db.get_columns('Task')]))  # model attributes
+        get_emp = get_employee_data()
+        edit_employee = Employee.get_or_none(Employee.ssn == get_emp['ssn'])
+
+        if not edit_employee:
+            print("No entries by that employee exist.")
+        else:
+            edit_db_task = Employee.select().join(Task).get
+        all_fields = db.get_columns('Employee') + db.get_columns('Task')
+
+
+        record_fields = OrderedDict.fromkeys([data[0] 
+                            for data in all_fields if 'id' not in data[0]]) # model attributes
+       
+        edit_options = ''.join(f'- {model_attr}\n'.replace('_', ' ').title() 
+                            for model_attr in enumerate(record_fields))
+   
+
+        edit_task_item = {'task' : self.store_category,
+                        'task_date' : self.store_date,
+                        'time_duration' : self.store_time,
+                        'note' : self.store_note}
         
-        # while True:
-        #     edit_options = ''.join(f'{int(i) + 1} - {model_attr}\n'.replace('_', ' ').title() for i, model_attr in enumerate(record_fields))
-        #     print('Edit a record by the following:\n\n' + edit_options)
+        while True:
+            edit_choice = input("Which field would you like to change?\n>>> ").upper().strip()
+            if edit_choice not in record_fields:
+                print("Cannot edit field...")
+                continue
+            break
 
-        #     break
-        # modify_field = {'edit employee' : get_employee_data}
+        if edit_choice in ['first_name', 'last_name', 'SSN']:
+            updated_attr = self.get_employee_data()
+        else:
+            updated_attr = edit_task_item[edit_choice]()
+
+
+
+            print('Edit a record by the following:\n\n' + edit_options)
+
+        modify_field = {'edit employee' : get_employee_data}
 
 
     def verify_employee(self, person):
                                 
         in_database = Employee.get_or_none(Employee.ssn == person['ssn'])
 
-        if not in_database: # select all employees with the same first and last name if the employee's ssn not in database; line 81
-            name_results = Employee.select().where(Employee.first_name == person['first name'],
-                                                   Employee.last_name == person['last name'])
-
-            if name_results: 
-                print('There are {count} other employees with the name {name}:'.format(count=len(name_results), name=person['first name'] + ' ' + person['last name']))
-                while True:
-                    print('To review other employee matches: [Y]es / [N]o')
-                    lookup = readchar.readkey().upper()
-                    if lookup not in ['Y', 'N']:
-                        print('Cannot process request...')
-                        continue
-                    break
-                if lookup == 'N':
-                    print('A new {first_n} {last_n} is added to the database...'.format(first_n=person['first name'], last_n=person['last name'])) 
-                else:
-                    official_name = '{first} {last}'.format(first=person['first name'], last=person['last name'])
-                    ssn_number = '{ssn}'.format(ssn=person['ssn'])
-                    print('Select an employee by employee id:\n')
-                    print(f'Selected -->> Employee Name: {official_name} - SSN#: {ssn_number}')
-
-                    ids = []
-                    menu_results =  '*' * 20
-                    for n in name_results:
-                        ids.append(str(n.id))
-                        menu_results += f'\nID#: {n.id}\nEmployee Name: {str(n)}\nSSN#: {n.ssn}\n' 
-                    menu_results += '*' * 20 + '\nPress [N] to not modify the employee record and EXIT menu.'
-                    print(menu_results)                 
-                    
-                    while True:
-                        id_employee = readchar.readkey().upper()
-                        key_selection = ids[:len(ids)]
-                        if id_employee == 'N':
-                            print("Exited out of employee records...no change occured.")
-                            print(f"{person['first name']} {person['last name']} - SSN#: {person['ssn']} is added to the database.")
-                            return Employee.create(first_name=person['first name'], 
-                                                   last_name=person['last name'], 
-                                                   ssn=person['ssn'])
-                        elif id_employee not in ids:
-                            print("Select only from these Employee ID#: + ''.join(f' [{n}] ' for n in ids[key_selection) to switch employees...")
-                            continue
-                        elif id_employee in ids:
-                            print(f'Confirm you want to select: ID: #{id_employee} - {official_name}? [Y]es / [N]o')
-
-                            while True:
-                                verify_selection = readchar.readkey().upper()
-                                if verify_selection not in ['Y', 'N']:
-                                    print("Please choose only [Y]es or [N]o...")
-                                    verify_selection = readchar.readkey().upper()
-                                break
-
-                            if verify_selection == 'Y':
-                                print(f'{official_name} - ID#: {id_employee} has now been selected...')
-                                return Employee.get_by_id(int(id_employee))
-
-            return Employee.create(first_name=person['first name'], 
-                                   last_name=person['last name'], 
-                                   ssn=person['ssn'])           
-        else:
+        if in_database:
+            return in_database # if record exists with that ssn
+        name_results = Employee.select().where(Employee.first_name == person['first_name'], # if record doesn't exist with that ssn
+                                                   Employee.last_name == person['last_name'])
+        if name_results:
+            official_name = '{first_name} {last_name}'.format(**person)
+            print(f'There are {len(name_results)} employees with the name: {official_name}')
+            while True:
+                print('To review other matches: [Y]es / [N]o')
+                lookup = readchar.readkey().upper()
+                if lookup not in ['Y', 'N']:
+                    print('Cannot process request...')
+                    continue
+                break
+            if lookup == 'N':
+                print('A new {official_name} is added to the database...')
+                return Employee.create(**person)
+            print('Selected -->> Employee Name: {first_name} {last_name} - SSN#: {ssn}'.format(**person))
+            ids = []
+            menu_results =  '*' * 20
+            for n in name_results:
+                ids.append(str(n.id))
+                menu_results += f'\nID#: {n.id}\nEmployee Name: {str(n)}\nSSN#: {n.ssn}\n' 
+            menu_results += '*' * 20 + '\nPress [N] to not modify the employee record and EXIT menu.'
+            print(menu_results)                            
+             
+            while True:
+                id_employee = readchar.readkey().upper()
+                if id_employee == 'N':
+                    print("Exited out of employee records...no change occured.")
+                    print("{first_name} {last_name} - SSN#: {ssn} is added to the database.".format(**person))
+                    return Employee.create(**person)
+                elif id_employee not in ids:
+                    print("Select only from these Employee ID#: + ''.join(f' [{n}] ' for n in ids[key_selection) to switch employees...")
+                    continue
+                elif id_employee in ids:
+                    print(f'{official_name} - ID#: {id_employee} has now been selected...')
+                    return Employee.get_by_id(int(id_employee))                       
             return in_database
 
 
     def get_employee_data(self):
         formats.clear_screen()
 
-        print("Please provide the following information: First Name, Last Name, and SSN:")
+        print("Please provide the following information: first_name, last_name, and SSN:")
                 
         employee_query = input("\nEnter the employee's name:\n>>> ").title().strip()
         emp_full_name = formats.name(employee_query)
@@ -170,7 +196,7 @@ class Database:
                 continue
             break
 
-        return dict(zip(['first name', 'last name', 'ssn'], [first_name, last_name, ssn_number]))
+        return dict(zip(['first_name', 'last_name', 'ssn'], [first_name, last_name, ssn_number]))
 
 
     def add_entry(self): 
@@ -181,18 +207,17 @@ class Database:
             work_employee = self.verify_employee(query_person)
             
             task_data = {
-                'task_type' : task_functions.store_category(),
+                'task' : task_functions.store_category(),
                 'task_date' : task_functions.store_date(),
-                'task_time' : task_functions.store_duration(),
-                'task_detail' : task_functions.store_note()
+                'time_duration' : task_functions.store_duration(),
+                'note' : task_functions.store_note(),
+                'employee' : work_employee
             }
 
             print("Task Stored...")
-            Task.create(task=task_data['task_type'], task_date=task_data['task_date'], time=task_data['task_time'],
-                        note=task_data['task_detail'], employee_id=work_employee)
+            Task.create(**task_data)
             
-            print('''
-Please select from the following:
+            print('''Please select from the following:
 [ N ] - Add another entry
 [ B ] - Back to the previous menu
 '''
@@ -267,7 +292,7 @@ Please select from the following:
                 break
 
             real_id = int(select_emp[:1])   
-            all_emp_tasks = Task.select().where(Task.employee_id == real_id)
+            all_emp_tasks = Task.select().where(Task.employee == real_id)
 
             repeat_search_employee = formats.display_tasks(all_emp_tasks)
 
@@ -306,7 +331,7 @@ Please select from the following:
                     search_end = datetime.date(year=this_year, month=12, day=31)
 
                 collect_date_range = Task.select().join(Employee).where(Task.task_date >= search_start, 
-                                                                        Task.task_date <= search_end) # list of tasks within date range
+                                                                        Task.task_date <= search_end).order_by(search_start) # list of tasks within date range
 
                 if not collect_date_range:
                     print("There are no dates within the given range.\nWould you like to search under a larger range [Y]es / [N]o?").upper().strip()
@@ -343,7 +368,7 @@ Please select from the following:
                     continue
                 break
 
-            tasks_by_phrase = Task.select().where((Task.task.contains(phrase)) | (Task.note.contains(phrase)))
+            tasks_by_phrase = Task.select().where((Task.task.contains(phrase)) | (Task.note.contains(phrase))).order_by(Task.task_date)
 
             repeat_search_notes = formats.display_tasks(tasks_by_phrase)
 
@@ -369,9 +394,10 @@ class Employee(BaseModel):
 
 class Task(BaseModel):
     task = CharField(max_length=15)
-    task_date = DateField(formats='%Y-%m-%d')
+    task_date = DateField(formats=['%Y-%m-%d'])
+    time_duration = TimeField(formats=['%H:%M'])
     note = CharField(max_length=15)
-    employee_id = ForeignKeyField(Employee, on_delete="CASCADE")
+    employee = ForeignKeyField(model=Employee, on_delete="CASCADE")
 
 
 if __name__ == '__main__':
