@@ -2,14 +2,18 @@ import datetime
 import re
 import readchar
 import sys
-
+import pdb
 import formats  
 import task_functions
 
+from peewee import *
 from collections import OrderedDict
 
 
 db = SqliteDatabase('task_logger.db', pragmas={'foreign_keys': 1})
+
+class UniqueExceptionClass():
+    print("That SSN exists under a different employee")
 
 class Database:
 
@@ -45,7 +49,7 @@ class Database:
 
             while option not in menu_ids:
                 print(f'Cannot perform selection -> ID entered: [{option}]')
-                user_input = readchar.readkey().upper()
+                option = readchar.readkey().upper()
 
             search_again = menu_options[option]()
             if not search_again:
@@ -54,7 +58,9 @@ class Database:
 
     def delete_entry(self):
         '''Remove an employee from the database'''
+
         while True:
+    
 
             emp_data = self.get_employee_data()
             db_emp = Employee.get_or_none(Employee.ssn==emp_data['ssn'])
@@ -75,17 +81,17 @@ class Database:
                 else:
                     print("Database record not deleted.")
                 
-                # while True:
-                #     print("To delete a different employee...press [Y]es/[N]o")
-                #     delete_attempt = readchar.readkey().upper()
-                #     if delete_attempt not in ['Y', 'N']:
-                #         print("Cannot interpret desired action.")
-                #         continue
-                #     break
+                    while True:
+                        print("To delete a different employee...press [Y]es/[N]o")
+                        delete_attempt = readchar.readkey().upper()
+                        if delete_attempt not in ['Y', 'N']:
+                            print("Cannot interpret desired action.")
+                            continue
+                        break
 
-                # if delete_attempt == 'Y':
-                #     continue
-                # break
+                    if delete_attempt == 'Y':
+                        continue
+                    break
 
 
     def edit_entry(self):
@@ -141,7 +147,7 @@ class Database:
                                                    Employee.last_name == person['last_name'])
         if name_results:
             official_name = '{first_name} {last_name}'.format(**person)
-            print(f'There are {len(name_results)} employees with the name: {official_name}')
+            print(f'\nThere are {len(name_results)} employees with the name: {official_name}')
             while True:
                 print('To review other matches: [Y]es / [N]o')
                 lookup = readchar.readkey().upper()
@@ -173,31 +179,31 @@ class Database:
                 elif id_employee in ids:
                     print(f'{official_name} - ID#: {id_employee} has now been selected...')
                     return Employee.get_by_id(int(id_employee))                       
-            return in_database
+        return Employee.create(**person)
 
 
     def get_employee_data(self):
         formats.clear_screen()
+        string_matches = re.compile(r'\b\w+') 
 
-        print("Please provide the following information: first_name, last_name, and SSN:")
-                
-        employee_query = input("\nEnter the employee's name:\n>>> ").title().strip()
-        emp_full_name = formats.name(employee_query)
-        first_name, last_name = emp_full_name.split()
-       
+        print("Provide the following: first name, last name, and SSN:") 
 
-        ssn_pattern = re.compile(r'\d{3}-\d{2}-\d{4}')
-            
         while True:
-            ssn_number = input('\nEnter {staff_employee}\'s social security number:\n>>> '.format(staff_employee=f'{first_name} {last_name}')).strip()
-
-            if not re.match(ssn_pattern, ssn_number):
-                print("The social security number doesn't match the character format required '111-11-1111'")
+            employee_query = input("Employee's name:\n>>> ").title().strip() 
+            query_result = re.findall(string_matches, employee_query) # '.' is not included with a name suffix for the purpose of line 192 passing; refer to line 184
+ 
+            if any(not re_string.isalpha() for re_string in query_result) or len(query_result) < 2:
+                formats.clear_screen()
+                print("\nInvalid name provided...First and last names required")
                 continue
             break
+        db_name = formats.filter_name(employee_query)
+        first_name, last_name = db_name.split()
 
-        return dict(zip(['first_name', 'last_name', 'ssn'], [first_name, last_name, ssn_number]))
+        ssn_number = input(f'\nEnter {first_name} {last_name}\'s social security number:\n>>> '.strip())
+        ssn = formats.verify_ssn(ssn_number)
 
+        return dict(zip(['first_name', 'last_name', 'ssn'], [first_name, last_name, ssn]))
 
     def add_entry(self): 
         '''Add data to the database'''
@@ -205,6 +211,7 @@ class Database:
         while True:
             query_person = self.get_employee_data()
             work_employee = self.verify_employee(query_person)
+            
             
             task_data = {
                 'task' : task_functions.store_category(),
@@ -217,11 +224,7 @@ class Database:
             print("Task Stored...")
             Task.create(**task_data)
             
-            print('''Please select from the following:
-[ N ] - Add another entry
-[ B ] - Back to the previous menu
-'''
-)
+            print('Please select from the following:\n[ N ] - Add another entry\n[ B ] - Back to the previous menu')
             while True:
                 prompt_new_entry = readchar.readkey().upper() # invokes program flow via keystroke
 
@@ -311,7 +314,7 @@ class Database:
                 try:
                     day_range = int(input(f"Establish how many days to look before and after {provided_date}:\n>>>"))
                 except TypeError:
-                    print("Could not compute the day range search...to gather dates within a range only provide numerical values...")
+                    print("Could not compute the day range search...only use whole numbers for dates")
                     continue
                 else:
                     if not day_range:
@@ -334,7 +337,7 @@ class Database:
                                                                         Task.task_date <= search_end).order_by(search_start) # list of tasks within date range
 
                 if not collect_date_range:
-                    print("There are no dates within the given range.\nWould you like to search under a larger range [Y]es / [N]o?").upper().strip()
+                    print("There are no dates within that range.\nSearch under a larger range? [Y]es / [N]o").upper().strip()
                     while True:
                         date_query_option = readchar.readkey().upper()
                         if date_query_option not in ['Y', 'N']:

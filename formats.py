@@ -3,7 +3,8 @@ import re
 import readchar
 import collections
 import os
-from main import Employee, Task
+import main
+import pdb;
 
 
 def date(emp_date):
@@ -39,23 +40,27 @@ def timeclock(time_worked):
             return time_clocked
 
 
-def name(person):
+def filter_name(person_name):
     '''Removes excessive/unnecessary characters from a provided name'''
-    employee_full_name = person.split()
-    characters = ''.join(employee_full_name)
 
-    while not characters or (characters and (not characters.isalpha() or len(employee_full_name) != 2)):
-        '''If string is empty; has numbers; doesn't have an array length of 2 when split'''
-        print('The name provided \'{chars}\' cannot be accepted.\n'.format(chars=' '.join(employee_full_name)))
-        print('''Rules for a valid employee name:
-1) First and Last Name
-2) No Suffixes ('Jr', 'II', 2)
-    ''')
-        employee_full_name = input(f">>> ").title().strip().split()
-        characters = ''.join(employee_full_name)
-    official_name = ' '.join(employee_full_name)
+    name_length = person_name.split()
 
-    return official_name
+    if person_name.upper().endswith(('JR', 'SR', 'JR.', "SR.")): 
+        del name_length[-1]
+    if len(name_length) > 2:
+        del name_length[1:-1]
+    return ' '.join(name_length)
+
+def verify_ssn(ssn_number):
+    ssn_pattern = re.compile(r'\d{3}-\d{2}-\d{4}')
+                
+    while True:
+        if not re.match(ssn_pattern, ssn_number):
+            ssn_number = input("The SSN provided doesn't match the format required '111-11-1111'")
+            continue
+        break
+    return ssn_number 
+
 
 
 def display_tasks(task_objects):
@@ -65,7 +70,7 @@ def display_tasks(task_objects):
     while True:
         i = indexed_tasks[0][1] # Task #__ of len(task_objects)
         show_task = indexed_tasks[0][0]
-        by_employee = str(Employee.get(main.Employee.id == show_task.employee.id)).upper() # Employee of task
+        by_employee = str(main.Employee.get(main.Employee.id == show_task.employee.id)).upper() # Employee of task
 
         print(f'***Task #{i} of {len(task_objects)}****')
         print(f'''
@@ -92,7 +97,10 @@ Details : {show_task.note}\n''')
             continue
         break # exit loop if user input is `B`
 
+
 def clear_screen():
     return os.system('cls' if os.name=='nt' else 'clear')
 
         
+if __name__ == '__main__':
+    print(filter_name ('George Herber Walker Bush JR.'))
