@@ -35,8 +35,8 @@ class Database:
         '''Add data to the database'''
 
         while True:
-            ssn = retrieve_data.get_ssn()
-            work_employee = retrieve_data.verify_employee(ssn)
+            ssn = retrieve_data.get_ssn() #input
+            work_employee = retrieve_data.verify_employee(ssn) #input
 
             time.sleep(1)
             formatter.clear_screen()
@@ -47,10 +47,9 @@ class Database:
                 'note' : task_functions.store_note(),
                 'employee' : work_employee
             }
-
             formatter.clear_screen()
             print("Task Stored...")
-            Task.create(**task_data)
+            work_task = Task.create(**task_data)
 
             print('Please select from the following:\n[ N ] - Add another entry\n[ B ] - Back to the previous menu')
 
@@ -60,12 +59,11 @@ class Database:
                     print("Invalid option. Please enter [N]ew entry; [B]ack to the previous menu:")
                     continue
                 break
-
             if prompt_new_entry == 'N':
                 continue
-
-            entry = Employee.select().join(Task).where(Employee.ssn == ssn)
-            return entry    
+            else:
+                return (all(isinstance(model[0], model[1]) for model in [(work_employee, Employee), (work_task,Task)]))
+            
 
     def delete_entry(self):
         '''Remove an employee from the database'''
@@ -117,19 +115,18 @@ class Database:
             search_menu_str = ''.join(f'{key} - {value.__doc__}\n' for key, value in search_options.items())    
             print(search_menu_str)  
 
-            while True:
-                search_input = readchar.readkey() 
-                if search_input not in search_options:
-                    print("That functionality does not exist. Please select only from the options listed above.")
-                    search_input= readchar.readchar()
-                break
+            search_input = readchar.readkey() 
+            if search_input not in search_options:
+                print("That functionality does not exist. Please select only from the options listed above.")
+                time.sleep(1)
+                continue
 
             search_results = search_options[search_input]()
             if search_results:
                 formatter.display_tasks(search_results)
             else:
                 formatter.clear_screen()
-                print("There are 0 results from your search.")
+                print("No results can be generated.")
 
             print("\nWould you like to perform another search...\n[N]ew search\n[M]ain Menu")
 
@@ -193,7 +190,7 @@ class Database:
             search_start = provided_date - datetime.timedelta(days=day_range)
         except OverflowError:
             this_year = provided_date.year
-            search_start = datetime.date(year=this_year, month=1, days=1)
+            search_start = datetime.date(year=this_year, month=1, day=1)
         else:
             try:
                 search_end = provided_date + datetime.timedelta(days=day_range)
@@ -213,15 +210,16 @@ class Database:
         while True:
             try:
                 search_time = abs(int(input("Search tasks by the number of minutes it took to finish:\n>>>")))
-            except TypeError:
+            except (TypeError, ValueError):
                 print("Tasks searched by time are only searched by minutes...")
-            if not search_time:
-                print("No time was entered to search by...")
-                continue
+            else:
+                if not search_time:
+                    print("No time was entered to search by...")
+                    continue
             
-            tasks_by_mins = Task.select().where(Task.time_duration == search_time)
+                tasks_by_mins = Task.select().where(Task.time_duration == search_time)
 
-            return tasks_by_mins
+                return tasks_by_mins
 
     def search_notes(self):
         """Find database entries by string matches"""

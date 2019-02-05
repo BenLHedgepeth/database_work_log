@@ -66,6 +66,7 @@ def display_tasks(task_objects):
     indexed_tasks = collections.deque(zip(task_objects, range(1, len(task_objects) + 1))) #provides a count of each task in `task_objects`
     
     while True:
+        clear_screen()
         i = indexed_tasks[0][1] # Task #__ of len(task_objects)
         show_task = indexed_tasks[0][0]
         by_employee = str(main.Employee.get(main.Employee.id == show_task.employee.id)).upper() # Employee of task

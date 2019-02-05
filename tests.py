@@ -8,21 +8,21 @@ import main
 import retrieve_data 
 import formatter 
 
-test_db = SqliteDatabase('dummy.db')
-
+test_db = SqliteDatabase(':memory:')
+DB_MODELS = (main.Employee, main.Task)
 
 class TestEntries(unittest.TestCase):
-    DB_MODELS = [main.Employee, main.Task]
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         db_is_closed = test_db.is_closed()
         if db_is_closed:
             test_db.connect(reuse_if_open=True)
-        test_db.bind(cls.DB_MODELS)
-        test_db.create_tables(cls.DB_MODELS)
+        test_db.bind(DB_MODELS)
+        test_db.create_tables(DB_MODELS)
+        self.data_plug()
+        self.database_tester = main.Database(show_menu=False)
         
-     def data_plug(self):
+    def data_plug(self):
 
         test_employees = {
             'id1' : {'first_name' : 'George', 'last_name' : 'Washington', 'ssn' : '000-01-1000'},
@@ -106,7 +106,7 @@ class TestEntries(unittest.TestCase):
                     mock_ssn = {'ssn' : '000-05-0000'}
                     test_emp_id = retrieve_data.verify_employee(mock_ssn)
                     test_emp = main.Employee.get(main.Employee.id == test_emp_id)
-                    self.assertEqual(test_emp.ssn, '000-02-2000')  
+                    self.assertNotEqual(mock_ssn, test_emp.ssn)  
 
     def test_delete_entry_no_tasks(self):
         with patch('builtins.input', side_effect=['100-20-3000']):
@@ -135,17 +135,18 @@ class TestEntries(unittest.TestCase):
                 self.assertEqual(len(get_phrases), 3)
 
     def test_add_entry(self):
-        with patch('builtins.input', side_effect=['008-00-0000', 'Ulysses Grant']):
+        with patch('builtins.input', side_effect=['008-00-0000', 'Ulysses Grant', 'Inauguration Speech', 
+                                                    '1869-03-04', '35', 'Became 18th US President']):
             with patch('builtins.print', return_value=None):
-                with patch('readchar.readkey', side_effect=['N']):
+                with patch('readchar.readkey', side_effect=['B']):
                     entry_added = self.database_tester.add_entry()
-                    self.assertEqual(len(entry_added), 7)
+                    self.assertTrue(entry_added)
 
     def test_filter_name(self):
         self.assertEqual(formatter.filter_name('George Herbert Walker Bush'), "George Bush")
 
     def tearDown(self):
-        test_db.drop_tables(self.DB_MODELS)
+        test_db.drop_tables(DB_MODELS)
 
 if __name__ == '__main__':
     unittest.main()
