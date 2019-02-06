@@ -166,7 +166,7 @@ class Database:
             break
 
         real_id = int(select_emp[:1])   
-        all_emp_tasks = Task.select().where(Task.employee == real_id)
+        all_emp_tasks = Task.select().where(Task.employee == real_id).order_by(Task.task_date)
 
         return all_emp_tasks
 
@@ -199,7 +199,7 @@ class Database:
                 search_end = datetime.date(year=this_year, month=12, day=31)
 
             collect_date_range = Task.select().join(Employee).where(Task.task_date >= search_start, 
-                                                                    Task.task_date <= search_end).order_by(search_start) 
+                                                                    Task.task_date <= search_end).order_by(Task.task_date)
 
             return collect_date_range
 
@@ -216,10 +216,10 @@ class Database:
                 if not search_time:
                     print("No time was entered to search by...")
                     continue
-            
-                tasks_by_mins = Task.select().where(Task.time_duration == search_time)
-
-                return tasks_by_mins
+                
+            search_time = formatter.timeclock(search_time)
+            tasks_by_mins = Task.select().where(Task.time_duration == search_time).order_by(Task.task_date)
+            return tasks_by_mins
 
     def search_notes(self):
         """Find database entries by string matches"""
@@ -232,7 +232,7 @@ class Database:
                 continue
             break
 
-        tasks_by_phrase = Task.select().where((Task.task.contains(phrase)) | (Task.note.contains(phrase))).order_by(Task.task_date)
+        tasks_by_phrase = Task.select().where((Task.task.contains(phrase)) | (Task.note.contains(phrase))).order_by(Task.task_date).order_by(Task.task_date)
 
         return tasks_by_phrase
 
