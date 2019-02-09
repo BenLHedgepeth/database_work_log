@@ -1,8 +1,8 @@
 import collections 
 import datetime
 import re
-import sys
 import time
+import sys
 
 from peewee import *
 import readchar
@@ -27,7 +27,8 @@ class Database:
             database_options = {
                 'A' : self.add_entry,
                 'D' : self.delete_entry,
-                'S' : self.search_entries
+                'S' : self.search_entries,
+                'X' : self.close
             }
             menu.MainMenuView(database_options)
 
@@ -235,6 +236,12 @@ class Database:
         tasks_by_phrase = Task.select().where((Task.task.contains(phrase)) | (Task.note.contains(phrase))).order_by(Task.task_date).order_by(Task.task_date)
 
         return tasks_by_phrase
+
+    @staticmethod
+    def close():
+        '''Exit'''
+        return sys.exit()
+
 
 
 

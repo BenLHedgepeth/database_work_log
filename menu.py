@@ -27,7 +27,6 @@ class MainMenuView:
             action_taken = options[option]()
             if action_taken or not action_taken:
                 continue
-            sys.exit()
 
 def employee_list(person):
     '''Menu showing employees with the same first and last name'''
