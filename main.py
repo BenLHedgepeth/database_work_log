@@ -167,6 +167,8 @@ class Database:
         stored_employees = Employee.select()
         employee_menu = ''
 
+        formatter.clear_screen()
+
         for emp in stored_employees:
             employee_menu_id = f'{emp.id}-{emp.ssn[-4:]}'
             employee_menu += employee_menu_id + f') {str(emp)}\n'
@@ -174,19 +176,21 @@ class Database:
             task_dict.setdefault(employee_menu_id, [])
             task_dict[employee_menu_id].append(emp)
 
-        print("Employees in Database:\n" +employee_menu)
-
         while True:
-            select_emp = input('Enter an employee id followed by the last four of their SSN# [X-XXXX]:\n>>> ').strip()
-            if select_emp not in task_dict:
-                print("An invalid reference was entered...")
-                continue
-            break
+            formatter.clear_screen()
+            print("Employees in Database:\n" +employee_menu)
 
-        real_id = int(select_emp[:1])   
-        all_emp_tasks = Task.select().where(Task.employee == real_id).order_by(Task.task_date)
+            while True:
+                select_emp = input('Enter an employee id followed by the last four of their SSN# [X-XXXX]:\n>>> ').strip()
+                if select_emp not in task_dict:
+                    print("An invalid reference was entered...")
+                    time.sleep(1.5)
+                    break
+                else:
+                    real_id = int(select_emp[:1])   
+                    all_emp_tasks = Task.select().where(Task.employee == real_id).order_by(Task.task_date)
 
-        return all_emp_tasks
+                    return all_emp_tasks
 
     def search_dates(self):
         """Find database entries by date"""
@@ -230,6 +234,7 @@ class Database:
             try:
                 search_time = abs(int(input("Search tasks by the number of minutes it took to finish:\n>>>")))
             except (TypeError, ValueError):
+                formatter.clear_screen()
                 print("Tasks searched by time are only searched by minutes...")
             else:
                 if not search_time:
@@ -247,6 +252,7 @@ class Database:
         while True:
             phrase = input("Search tasks by a given phrase:\n>>>").title().strip()
             if not phrase:
+                formatter.clear_screen()
                 print("Empty strings cannot be used to search tasks...")
                 continue
             break
