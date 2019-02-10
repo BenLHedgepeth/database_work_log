@@ -70,6 +70,7 @@ class Database:
         '''Remove an employee from the database'''
 
         record_ssn = retrieve_data.get_ssn()
+        formatter.clear_screen()
         previous_tasks = Task.select().join(Employee).where(Employee.ssn == record_ssn['ssn']).dicts(as_dict=True)
 
         if not previous_tasks:
@@ -78,26 +79,42 @@ class Database:
             return False
         task_ids = []
 
-        print('*' * 20)
-        task_choices = ''
-        for t in previous_tasks:
-            task_ids.append(t['id'])
-            task_choices += '\nTask ID: {id}\nTask: {task}\nDate: {task_date}\nNote: {note}\n'.format(**t)
-        task_choices += '\n'
-        print(task_choices)
-        print('*' * 20)
-        print("\nChoose an entry to delete...")
-
         while True:
+            formatter.clear_screen()
+            header = f"Employe SSN: {record_ssn['ssn']}\n"
 
-            task_num = int(readchar.readkey())
-            if task_num not in task_ids:
-                print("Cannot delete entry. Enter ID# again.")
-                continue
-            break
-        del_task = Task.get_by_id(task_num)
-        print(f'Deleted Task ID# {task_num}')
-        return del_task.delete_instance()
+            print(header + '*' * 20)
+            task_choices = ''
+            for t in previous_tasks:
+                task_ids.append(t['id'])
+                task_choices += '\nTask ID: {id}\nTask: {task}\nDate: {task_date}\nNote: {note}\n'.format(**t)
+            task_choices += '\n'
+            print(task_choices)
+            print('*' * 20)
+            print("\nChoose an entry to delete... (or 'Q' to exit)")
+
+            while True:
+                task_num = readchar.readkey().upper()
+                if task_num == 'Q':
+                    print('Deletion Occured: None')
+                    time.sleep(2)
+                    return
+                else:
+                    try:
+                        task_num = int(task_num) 
+                    except ValueError:
+                        print("Cannot delete entry. Enter a valid ID")
+                        time.sleep(1.5)
+                        break
+                    else:
+                        if task_num not in task_ids:
+                            print(f"No match exists under that SSN: Task ID# {task_num}")
+                            time.sleep(1.5)
+                            break
+                        del_task = Task.get_by_id(task_num)
+                        print(f'Deleted Task ID# {task_num}')
+                        time.sleep(1.5)
+                        return del_task.delete_instance()
 
     def search_entries(self):
         '''Search database'''
@@ -180,7 +197,8 @@ class Database:
         while True:
             try:
                 day_range = int(input(f"Establish how many days to look before and after {provided_date}:\n>>>"))
-            except TypeError:
+            except (ValueError, TypeError):
+                formatter.clear_screen()
                 print("Could not compute the search...only provide a number for the range.")
             else:
                 if not day_range:
