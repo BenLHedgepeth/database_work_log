@@ -187,7 +187,8 @@ class Database:
                     time.sleep(1.5)
                     break
                 else:
-                    real_id = int(select_emp[:1])   
+                    id_pattern = re.compile(r'\d+')
+                    real_id = int(id_pattern.match(select_emp).group())   
                     all_emp_tasks = Task.select().where(Task.employee == real_id).order_by(Task.task_date)
 
                     return all_emp_tasks
