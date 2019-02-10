@@ -240,10 +240,11 @@ class Database:
                 if not search_time:
                     print("No time was entered to search by...")
                     continue
+                else:
                 
-            search_time = formatter.timeclock(search_time)
-            tasks_by_mins = Task.select().where(Task.time_duration == search_time).order_by(Task.task_date)
-            return tasks_by_mins
+                    search_time = formatter.timeclock(search_time)
+                    tasks_by_mins = Task.select().where(Task.time_duration == search_time).order_by(Task.task_date)
+                    return tasks_by_mins
 
     def search_notes(self):
         """Find database entries by string matches"""

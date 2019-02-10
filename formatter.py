@@ -34,6 +34,8 @@ def timeclock(time_worked):
         try:
             time_clocked = datetime.time(hour=int(hours), minute=int(minutes))
         except (ValueError, OverflowError):
+            print("The amount of time entered exceeds permissible limits!")
+            time.sleep(1.5)
             time_clocked = task_functions.store_duration()
         finally:
             return time_clocked
